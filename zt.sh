@@ -7,7 +7,8 @@ set -eEuo pipefail
 RC_SCRIPT=/usr/local/etc/rc.d/tun.sh
 TUN_DEV=/dev/net/tun
 DOCKER_VOLUME=/volume1/docker/zerotier-one
-DOCKER_IMAGE=zerotier/zerotier-synology:latest
+DOCKER_IMAGE_VERSION=latest
+DOCKER_IMAGE=zerotier/zerotier-synology:${DOCKER_IMAGE_VERSION:-latest}
 DOCKER_CONTAINER=zerotier
 
 function usage {
