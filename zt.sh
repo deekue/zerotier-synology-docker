@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # QaD script to install and manage Zerotier on a Synology NAS
+# based on https://docs.zerotier.com/devices/synology/
 
 set -eEuo pipefail
 
