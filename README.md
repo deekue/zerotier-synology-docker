@@ -1,6 +1,7 @@
 # Zerotier Synology Docker script
 
-<abbr title="Quick and Dirty">QaD</abbr> script to install and manage Zerotier on a Synology NAS.
+Script to install and manage Zerotier on a Synology NAS.
+`setup` will also migrate settings from the Synology spkg
 
 based on https://docs.zerotier.com/devices/synology/
 
@@ -8,16 +9,17 @@ Usage:
 ```
 zt.sh <command> [command options]
 
-Custom commands:
+  Custom commands:
   setup
   start
+  stop
   upgrade
-  docker [docker command] [docker args]
-  shell
+  shell [shell command] [shell args]
 
-everything else is passed through to the zerotier-one cli inside the Docker container
+  everything else is passed through to the zerotier-one cli inside the Docker container
   eg.
   info
   status
   join <network id>
+  -j listnetworks
 ```

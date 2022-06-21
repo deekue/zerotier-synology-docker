@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# QaD script to install and manage Zerotier on a Synology NAS
+# script to install and manage Zerotier on a Synology NAS
+# will also migrate settings from the Synology spkg
 # based on https://docs.zerotier.com/devices/synology/
 
 set -eEuo pipefail
@@ -19,15 +20,16 @@ $(basename -- "$0") <command> [command options]
   Custom commands:
   setup
   start
+  stop
   upgrade
-  docker [docker command] [docker args]
-  shell
+  shell [shell command] [shell args]
 
   everything else is passed through to the zerotier-one cli inside the Docker container
   eg.
   info
   status
   join <network id>
+  -j listnetworks
 
 EOF
 
@@ -35,21 +37,26 @@ EOF
 }
 
 function invokeCommand {
-  local -r cmd="cmd_${1:-}"
-  local -r cmdOpts=("${@:2}")
+  local -r cmdArgs=("$@")
+  local -r cmd="cmd_${cmdArgs[0]}"
+  local -r cmdOpts=("${cmdArgs[@]:1}")
 
   if [[ "$(type -t "$cmd")" == "function" ]] ; then
     "$cmd" "${cmdOpts[@]}"
   else
-    cmd_zt_cli "${cmdOpts[@]}"
+    cmd_zt_cli "$@"
   fi
 }
 
 function cmd_setup {
   # ref: https://memoryleak.dev/post/fix-tun-tap-not-available-on-a-synology-nas/
-  if [ ! -w "$RC_SCRIPT" ] ; then
-    echo -e '#!/bin/sh -e \ninsmod /lib/modules/tun.ko' \
-      > "$RC_SCRIPT"
+  if [ ! -f "$RC_SCRIPT" ] ; then
+    cat <<EOF > "$RC_SCRIPT"
+#!/bin/sh -e
+if ! lsmod | grep -qw tun ; then
+  insmod /lib/modules/tun.ko
+fi
+EOF
   fi
 
   if [ ! -x "$RC_SCRIPT" ] ; then
@@ -73,6 +80,7 @@ function cmd_setup {
 
   if [ ! -d "$DOCKER_VOLUME" ] ; then
     # TODO query Docker pkg volume root
+    # shellcheck disable=SC2174
     mkdir -p -m 0700 "$DOCKER_VOLUME"
   fi
 
@@ -100,29 +108,33 @@ function cmd_start {
     -v "$DOCKER_VOLUME":/var/lib/zerotier-one "$DOCKER_IMAGE"
 }
 
-function cmd_upgrade {
+function cmd_stop {
   local -r cid="$(docker ps -q -f name="$DOCKER_CONTAINER")"
-
-  # download first
-  docker pull "$DOCKER_IMAGE"
 
   if [ -n "$cid" ] ; then
     docker stop "$cid"
   fi
+}
+
+function cmd_upgrade {
+  # download first
+  docker pull "$DOCKER_IMAGE"
+
+  cmd_stop
   docker container rm "$DOCKER_CONTAINER"
   cmd_start
 }
 
-function cmd_docker {
+function cmd_in_docker {
   docker exec -it "$DOCKER_CONTAINER" "$@"
 }
 
 function cmd_zt_cli {
-  cmd_docker zerotier-cli "$@"
+  cmd_in_docker zerotier-cli "$@"
 }
 
 function cmd_shell {
-  cmd_docker bash
+  cmd_in_docker bash "$@"
 }
 
 case "${#@}" in
